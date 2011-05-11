@@ -3,12 +3,12 @@
 rtropo
 =======
 
-Basic `Tropo <http://www.tropo.com>`_ backend for the `RapidSMS <http://www.rapidsms.org/>`_ `Threadless router <https://github.com/caktus/rapidsms-threadless-router>`
+Basic `Tropo <http://www.tropo.com>`_ backend for the `RapidSMS <http://www.rapidsms.org/>`_ `Threadless router <https://github.com/caktus/rapidsms-threadless-router>`_
 
 Requirements
 ------------
 
- * `tropo-webapi-python <https://github.com/tropo/tropo-webapi-python>` (?????) (pip install tropo-webapi-python)
+ * `tropo-webapi-python <https://github.com/tropo/tropo-webapi-python>`_  (pip install tropo-webapi-python)
 
 Usage
 -----
@@ -50,8 +50,8 @@ or::
 Background
 ----------
 
- * `Tropo's API doc <https://www.tropo.com/docs/webapi/how_tropo_web_api_works.htm>`
- * `tropo-webapi-python doc <https://github.com/tropo/tropo-webapi-python/blob/master/README>`
- * `Receiving text messages <https://www.tropo.com/docs/scripting/receiving_text_messages.htm>`
+ * `Tropo's API doc <https://www.tropo.com/docs/webapi/how_tropo_web_api_works.htm>`_
+ * `tropo-webapi-python doc <https://github.com/tropo/tropo-webapi-python/blob/master/README>`_
+ * `Receiving text messages <https://www.tropo.com/docs/scripting/receiving_text_messages.htm>`_
 
 Development by `Caktus Consulting Group <http://www.caktusgroup.com/>`_.
