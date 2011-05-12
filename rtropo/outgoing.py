@@ -16,11 +16,13 @@ class TropoBackend(BackendBase):
     def send(self, message):
         self.debug("send(%s)" % message)
         base_url = 'http://api.tropo.com/1.0/sessions'
-        token = self.config['auth_token']
+        token = self.config['messaging_token']
         action = 'create'
-        number = self.config['number']
+        # Tropo doesn't like dashes in phone numbers
+        callerID = self.config['number'].replace("-","")
+        numberToDial = message.connection.identity.replace("-","")
 
-        params = urlencode([('action', action), ('token', token), ('numberToDial', message.connection.identity), ('msg', message.text)])
+        params = urlencode([('action', action), ('token', token), ('numberToDial', numberToDial), ('msg', message.text), ('callerID', callerID)])
         self.debug("%s?%s" % (base_url, params))
         data = urlopen('%s?%s' % (base_url, params)).read()
         self.debug(data)

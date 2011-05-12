@@ -13,17 +13,27 @@ Requirements
 Usage
 -----
 
-Add rtropo to your Python path and setup the Tropo backend in your Django settings file. For example::
+Create an application at tropo.com.  Its type should be "Tropo scripting".
+
+Upload the provided 'troposcript.py' as a 'Hosted File' (you'll probably have to rename it, but keep the .py extension) and make sure the application settings give the link to that script under 'What URL powers SMS/messaging calls to your app?'.
+
+Add rtropo to your Python path and set up the Tropo backend in your Django settings file. For example::
 
     INSTALLED_BACKENDS = {
         "tropo": {
             "ENGINE": "rtropo.backend",
             'config': {
-                'auth_token': 'YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY',
-                'number': '(###) ###-####',
+                # Your Tropo application's outbound token for messaging
+                'messaging_token': 'YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY',
+                # Your Tropo application's voice/messaging phone number (including country code, which must be +1 for US)
+                'number': '+1-###-###-####',
+                # SMS/messaging URL of your application
+                #'script_url': 'http://hosting.tropo.com/69999/www/aremind2script.py',
             }
         },
     }
+
+At this point you should be able to send outgoing messages, but more setup is needed to receiving incoming messages.
 
 Set up your URLconf to send incoming http requests from tropo to rtropo.views.message_received, passing the backend_name parameter.  For example::
 
