@@ -8,14 +8,13 @@ Basic `Tropo <http://www.tropo.com>`_ backend for the `RapidSMS <http://www.rapi
 Requirements
 ------------
 
+ * `rapidsms-threadless-router <https://github.com/caktus/rapidsms-threadless-router>`_
  * `tropo-webapi-python <https://github.com/tropo/tropo-webapi-python>`_  (pip install tropo-webapi-python)
 
 Usage
 -----
 
-Create an application at tropo.com.  Its type should be "Tropo scripting".
-
-Upload the provided 'troposcript.py' as a 'Hosted File' (you'll probably have to rename it, but keep the .py extension) and make sure the application settings give the link to that script under 'What URL powers SMS/messaging calls to your app?'.
+Create an application at tropo.com.  Its type should be "Web API".
 
 Add rtropo to your Python path and set up the Tropo backend in your Django settings file. For example::
 
@@ -27,8 +26,6 @@ Add rtropo to your Python path and set up the Tropo backend in your Django setti
                 'messaging_token': 'YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY',
                 # Your Tropo application's voice/messaging phone number (including country code, which must be +1 for US)
                 'number': '+1-###-###-####',
-                # SMS/messaging URL of your application
-                #'script_url': 'http://hosting.tropo.com/69999/www/aremind2script.py',
             }
         },
     }
@@ -41,20 +38,16 @@ Set up your URLconf to send incoming http requests from tropo to rtropo.views.me
     from rtropo import views
 
     urlpatterns = patterns('',
-        url(r"^(?P<backend_name>[\w-]+)/$", views.message_received,
-            name='tropo'),
-    )
-
-or::
-
-    from django.conf.urls.defaults import *
-    from rtropo import views
-
-    urlpatterns = patterns('',
-        url(r"^sms/$", views.message_received,
+        url(r"^tropo.py$", views.message_received,
             name='tropo',
             kwargs = { 'backend_name': 'tropo'}),
     )
+
+You can use another URL, but it must end in ".py".
+
+Configure your Tropo application at tropo.com so its SMS/Messaging URL will invoke the Django URL that you just configured.  E.g.::
+
+    http://yourserver.example.com/tropo.py
 
 
 Background

@@ -22,6 +22,9 @@ class TropoBackend(BackendBase):
         callerID = self.config['number'].replace("-","")
         numberToDial = message.connection.identity.replace("-","")
 
+        # This approach assumes that we are giving a particular script
+        # to Tropo - see views.py for that script
+
         params = urlencode([('action', action), ('token', token), ('numberToDial', numberToDial), ('msg', message.text), ('callerID', callerID)])
         self.debug("%s?%s" % (base_url, params))
         data = urlopen('%s?%s' % (base_url, params)).read()
