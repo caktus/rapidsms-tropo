@@ -24,7 +24,9 @@ Add rtropo to your Python path and set up the Tropo backend in your Django setti
             'config': {
                 # Your Tropo application's outbound token for messaging
                 'messaging_token': 'YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY',
-                # Your Tropo application's voice/messaging phone number (including country code, which must be +1 for US)
+                # Your Tropo application's outbound token for voice (optional)
+                'voice_token': 'ZZZZZZZZZZZZZZZZZZZZZZZZZZ',
+                # Your Tropo application's voice/messaging phone number (including country code, which must be +1 because only US numbers can be used for messaging)
                 'number': '+1-###-###-####',
             }
         },
@@ -38,16 +40,23 @@ Set up your URLconf to send incoming http requests from tropo to rtropo.views.me
     from rtropo import views
 
     urlpatterns = patterns('',
-        url(r"^tropo.py$", views.message_received,
+        url(r"^tropo/$", views.message_received,
             name='tropo',
             kwargs = { 'backend_name': 'tropo'}),
     )
 
-You can use another URL, but it must end in ".py".
+You can use any URL.
 
 Configure your Tropo application at tropo.com so its SMS/Messaging URL will invoke the Django URL that you just configured.  E.g.::
 
-    http://yourserver.example.com/tropo.py
+    http://yourserver.example.com/tropo/
+
+Voice and more complicated stuff
+--------------------------------
+
+The tropo backend provides a way for your app to get access to tropo
+and do whatever it wants using Tropo's Web API.  See
+rtropo/outgoing.py, TropoBackend.call_tropo().
 
 
 Background
