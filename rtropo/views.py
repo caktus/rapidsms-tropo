@@ -3,7 +3,7 @@
 import json
 import logging
 
-from django.core.cache import cache
+from django.core.urlresolvers import resolve
 from django.http import HttpResponse, HttpResponseServerError
 from django.views.decorators.csrf import csrf_exempt
 from threadless_router.base import incoming
@@ -12,32 +12,22 @@ from tropo import Tropo
 logger = logging.getLogger('rtropo.views')
 logger.setLevel(logging.DEBUG)
 
-"""
-Info in cache:
-
-{randomUUID} -> callback function
-{randomUUID}_data -> callback data
-
-request parameter 'callback_id' -> {randomUUID}
-
-when we get a session ID:
-  {session_ID}_callback -> callback function
-  {session_ID}_data -> callback data
-  delete {randomUUID} and {randomUUID}_data
-"""
-
-
 @csrf_exempt
 def message_received(request, backend_name):
     """Handle HTTP requests from Tropo.
     """
 
-    logger.debug("@@Got request from Tropo: %s" % request)
+    #logger.debug("@@Got request from Tropo: %s" % request)
 
     if request.method == 'POST':
-        logger.debug("@@%s" % request.raw_post_data)
-        post = json.loads(request.raw_post_data)
-        logger.debug("@@%r" % post)
+        logger.debug("@@ Raw data: %s" % request.raw_post_data)
+        try:
+            post = json.loads(request.raw_post_data)
+        except Exception, e:
+            logger.exception(e)
+            logger.debug("EXCEPTION decoding post data")
+            return HttpResponseServerError()
+        logger.debug("@@ Decoded data: %r" % post)
 
         if 'result' in post:
             session_id = post['result']['sessionId']
@@ -48,11 +38,6 @@ def message_received(request, backend_name):
             return HttpResponseServerError()
             
         # Do we need to pass this to somebody else?
-        callback = cache.get("%s_callback" % session_id)
-        if callback is not None:
-            data = cache.get("%s_data" % session_id)
-            return callback(request,data)
-
         if 'result' in post:
             logger.debug("@@ results?  we don't expect results, only callback users ought to be getting results.  Return error.")
             return HttpResponseServerError()
@@ -61,24 +46,19 @@ def message_received(request, backend_name):
 
         if 'parameters' in s:
             parms      = s['parameters']
-            
-            if 'callback_id' in parms:
-                logger.debug("@@callback_id found")
-                callback = cache.get(parms['callback_id'])
-                if callback is not None:
-                    # first time we've been called for this callback
-                    # move the cached data to be keyed by session ID
-                    # so we can find it again
-                    data = cache.get("%s_data" % parms['callback_id'])
-                    cache.set("%s_callback" % session_id, callback)
-                    cache.set("%s_data" % session_id, data)
-                    cache.delete(parms['callback_id'])
-                    cache.delete("%s_data" % parms['callback_id'])
+            logger.debug("@@ got session")
 
-                    logger.debug("@@Passing request to callback...")
-                    return callback(request,data)
-                logger.error("@@Could not find function for callback id %s" % parms['callback_id'])
-                return HttpResponseServerError()
+            if 'callback_url' in parms:
+                url = parms['callback_url']
+                view, args, kwargs = resolve(url)
+                kwargs['request'] = request
+                logger.debug("@@ passing tropo request to %s" % url)
+                try:
+                    return view(*args, **kwargs)
+                except Exception, e:
+                    logger.error("@@Caught exception calling callback:")
+                    logger.exception(e)
+                    return HttpResponseServerError()
 
             # Did we call Tropo so we could send a text message?
             if 'numberToDial' in parms:
@@ -122,10 +102,3 @@ def message_received(request, backend_name):
         # our Tropo app should be a Web API app.
         logger.error("@@Unexpected GET to tropo URL")
         return HttpResponseServerError()
-        # Not a post, so Tropo is just asking for our script
-        # Give it to them
-        # The code in outgoing.py assumes this script
-        #return HttpResponse("""
-#message(msg, { "to": numberToDial,  "network":"SMS", "callerID": callerID})
-#log("Sent to %s: %s" % (numberToDial, msg))
-#""")

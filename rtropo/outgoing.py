@@ -29,35 +29,26 @@ class TropoBackend(BackendBase):
         self.debug(data)
         return True
 
-    def call_tropo(self,callback,message_type='text',data=None):
+    def call_tropo(self,callback_url,message_type='text'):
         """Other apps can call this and pass a function.  
         We'll ask tropo to kick off our application and return.
         Soon, Tropo will POST to us.  When we get the post, we'll pass it to the function
         we were originally given to handle, which it should do by parsing the JSON it
         was POSTed and responding with some more JSON.  (See the Tropo WebAPI docs.)
 
-        The callback function should look somthing like:
+        The callback_url is a URL.  When Tropo calls us back,
+        we'll pass the request to whatever view django would normally
+        use for that URL.  It can include parameters
+        (e.g. "/patient/callback/1").  An easy way to build this is
+        to use reverse:
 
-        def function(request, data):
-            ...
-            return HttpResponse(...)
+          url = reverse('patient-callback', kwargs={ 'patient_id': patient_id })
 
         message_type is optional, or pass 'voice' to use the voice token instead of text.
 
-        data is optional; we'll pass None to the callback if not provided.
-
         (We do this by adding some parms to the call we make to Tropo and looking for
-        them on the return post. We remember the info using Django caching.)"""
-
-        from django.core.cache import cache
-        import uuid
-
-        # Random unique identifier for this
-        callback_id = uuid.uuid4()
-
-        cache.set(callback_id, callback)
-        if data is not None:
-            cache.set("%s_data" % callback_id, data)
+        them on the return post.)
+        """
 
         if message_type == 'text':
             token = self.config['messaging_token']
@@ -66,7 +57,7 @@ class TropoBackend(BackendBase):
 
         # Call Tropo
         parms = urlencode([('action','create'),
-                           ('callback_id',callback_id),
+                           ('callback_url',callback_url),
                            ('token', token),
                            ])
         urlopen("%s?%s" % (base_url, parms)).read()
