@@ -29,17 +29,22 @@ class TropoBackend(BackendBase):
         self.debug(data)
         return True
 
-    def call_tropo(self,callback,message_type='text'):
+    def call_tropo(self,callback,message_type='text',data=None):
         """Other apps can call this and pass a function.  
         We'll ask tropo to kick off our application and return.
         Soon, Tropo will POST to us.  When we get the post, we'll pass it to the function
         we were originally given to handle, which it should do by parsing the JSON it
         was POSTed and responding with some more JSON.  (See the Tropo WebAPI docs.)
 
-        The callback function should be your basic view function, taking an HttpRequest
-        object and returning an HttpResponse object.
+        The callback function should look somthing like:
+
+        def function(request, data):
+            ...
+            return HttpResponse(...)
 
         message_type is optional, or pass 'voice' to use the voice token instead of text.
+
+        data is optional; we'll pass None to the callback if not provided.
 
         (We do this by adding some parms to the call we make to Tropo and looking for
         them on the return post. We remember the info using Django caching.)"""
@@ -47,10 +52,12 @@ class TropoBackend(BackendBase):
         from django.core.cache import cache
         import uuid
 
-        # Unique identifier for this
-        callback_id = uuid.UUID()
+        # Random unique identifier for this
+        callback_id = uuid.uuid4()
 
         cache.set(callback_id, callback)
+        if data is not None:
+            cache.set("%s_data" % callback_id, data)
 
         if message_type == 'text':
             token = self.config['messaging_token']
@@ -62,4 +69,4 @@ class TropoBackend(BackendBase):
                            ('callback_id',callback_id),
                            ('token', token),
                            ])
-        urlopen("%s?%s" % (base_url, params)).read()
+        urlopen("%s?%s" % (base_url, parms)).read()

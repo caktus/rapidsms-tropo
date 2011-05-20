@@ -3,17 +3,36 @@
 import json
 import logging
 
+from django.core.cache import cache
 from django.http import HttpResponse, HttpResponseServerError
 from django.views.decorators.csrf import csrf_exempt
 from threadless_router.base import incoming
 from tropo import Tropo
 
 logger = logging.getLogger('rtropo.views')
+logger.setLevel(logging.DEBUG)
+
+"""
+Info in cache:
+
+{randomUUID} -> callback function
+{randomUUID}_data -> callback data
+
+request parameter 'callback_id' -> {randomUUID}
+
+when we get a session ID:
+  {session_ID}_callback -> callback function
+  {session_ID}_data -> callback data
+  delete {randomUUID} and {randomUUID}_data
+"""
+
 
 @csrf_exempt
 def message_received(request, backend_name):
     """Handle HTTP requests from Tropo.
     """
+
+    logger.debug("@@Got request from Tropo: %s" % request)
 
     if request.method == 'POST':
         logger.debug("@@%s" % request.raw_post_data)
@@ -21,28 +40,43 @@ def message_received(request, backend_name):
         logger.debug("@@%r" % post)
 
         if 'result' in post:
-            # FIXME: Results of something - not sure yet what to do with this
             session_id = post['result']['sessionId']
-            logger.debug("@@not sure yet what to do with a result")
-            return HttpResponse('')
-
-        if 'session' not in post:
+        elif 'session' in post:
+            session_id = post['session']['id']
+        else:
             logger.error("@@HEY, post is neither result nor session, what's going on?")
+            return HttpResponseServerError()
+            
+        # Do we need to pass this to somebody else?
+        callback = cache.get("%s_callback" % session_id)
+        if callback is not None:
+            data = cache.get("%s_data" % session_id)
+            return callback(request,data)
+
+        if 'result' in post:
+            logger.debug("@@ results?  we don't expect results, only callback users ought to be getting results.  Return error.")
             return HttpResponseServerError()
 
         s = post['session']
-        session_id = s['id']
 
         if 'parameters' in s:
             parms      = s['parameters']
-
-            # Do we need to pass this to somebody else?
+            
             if 'callback_id' in parms:
                 logger.debug("@@callback_id found")
-                from django.core.cache import cache
                 callback = cache.get(parms['callback_id'])
                 if callback is not None:
-                    return callback(request)
+                    # first time we've been called for this callback
+                    # move the cached data to be keyed by session ID
+                    # so we can find it again
+                    data = cache.get("%s_data" % parms['callback_id'])
+                    cache.set("%s_callback" % session_id, callback)
+                    cache.set("%s_data" % session_id, data)
+                    cache.delete(parms['callback_id'])
+                    cache.delete("%s_data" % parms['callback_id'])
+
+                    logger.debug("@@Passing request to callback...")
+                    return callback(request,data)
                 logger.error("@@Could not find function for callback id %s" % parms['callback_id'])
                 return HttpResponseServerError()
 
@@ -77,9 +111,11 @@ def message_received(request, backend_name):
             # Respond nicely to Tropo
             t = Tropo()
             t.hangup()
+            logger.debug("@@responding to tropo with hangup")
             return HttpResponse(t.RenderJson())
         except Exception, e:
             logger.exception(e)
+            logger.debug("@@responding to tropo with error")
             return HttpResponseServerError()
     else:
         # What?  We don't expect any GET to our URL because
@@ -89,7 +125,7 @@ def message_received(request, backend_name):
         # Not a post, so Tropo is just asking for our script
         # Give it to them
         # The code in outgoing.py assumes this script
-        return HttpResponse("""
-message(msg, { "to": numberToDial,  "network":"SMS", "callerID": callerID})
-log("Sent to %s: %s" % (numberToDial, msg))
-""")
+        #return HttpResponse("""
+#message(msg, { "to": numberToDial,  "network":"SMS", "callerID": callerID})
+#log("Sent to %s: %s" % (numberToDial, msg))
+#""")
