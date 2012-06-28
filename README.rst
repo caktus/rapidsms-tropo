@@ -1,7 +1,5 @@
--*- restructuredtext -*-
-
-rtropo
-=======
+rapidsms-tropo
+============================
 
 Basic `Tropo <http://www.tropo.com>`_ backend for the `RapidSMS <http://www.rapidsms.org/>`_ `Threadless router <https://github.com/caktus/rapidsms-threadless-router>`_
 
@@ -40,9 +38,7 @@ Set up your URLconf to send incoming http requests from tropo to rtropo.views.me
     from rtropo import views
 
     urlpatterns = patterns('',
-        url(r"^tropo/$", views.message_received,
-            name='tropo',
-            kwargs = { 'backend_name': 'tropo'}),
+        url(r"^tropo/$", views.message_received, kwargs={'backend_name': 'tropo'}, name='tropo'),
     )
 
 You can use any URL.
@@ -67,3 +63,12 @@ Background
  * `Receiving text messages <https://www.tropo.com/docs/scripting/receiving_text_messages.htm>`_
 
 Development by `Caktus Consulting Group <http://www.caktusgroup.com/>`_.
+
+
+Changelog
+--------------------------------
+
+v0.1.0 (Released 2012-06-28)
+________________________________
+
+- Initial stable release
