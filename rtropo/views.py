@@ -10,7 +10,6 @@ from threadless_router.base import incoming
 from tropo import Tropo
 
 logger = logging.getLogger('rtropo.views')
-logger.setLevel(logging.DEBUG)
 
 @csrf_exempt
 def message_received(request, backend_name):
