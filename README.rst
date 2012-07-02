@@ -68,6 +68,12 @@ Development by `Caktus Consulting Group <http://www.caktusgroup.com/>`_.
 Changelog
 --------------------------------
 
+v0.1.1 (Released 2012-07-02)
+________________________________
+
+- Updated MANIFEST to inlcude distribute_setup.py
+
+
 v0.1.0 (Released 2012-06-28)
 ________________________________
 
