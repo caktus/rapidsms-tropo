@@ -3,8 +3,10 @@
 import json
 import logging
 
+from django.conf import settings
 from django.core.urlresolvers import resolve
-from django.http import HttpResponse, HttpResponseServerError
+from django.http import HttpResponse, HttpResponseServerError, \
+    HttpResponseBadRequest
 from django.views.decorators.csrf import csrf_exempt
 from threadless_router.base import incoming
 from tropo import Tropo
@@ -46,6 +48,24 @@ def message_received(request, backend_name):
         if 'parameters' in s:
             parms      = s['parameters']
             logger.debug("@@ got session")
+
+            # A couple kinds of requests that are due to our calling Tropo
+            # and asking to be called back. We can validate these by looking
+            # for our token, which we pass when we call Tropo and Tropo
+            # passes back to us now.
+            if 'callback_url' in parms or 'numberToDial' in parms:
+                # Confirm that the message includes our token (we always
+                # include it when we call Tropo for this)
+                if 'token' not in parms:
+                    logger.error("@@ Got numbertoDial or callback_url "
+                                 "request without any token")
+                    return HttpResponseBadRequest()
+                our_token = settings.INSTALLED_BACKENDS[backend_name]\
+                    ['config']['messaging_token']
+                if our_token != parms['token']:
+                    logger.error("@@ Got wrong token in numberToDial or "
+                                 "callback_url request")
+                    return HttpResponseBadRequest()
 
             if 'callback_url' in parms:
                 url = parms['callback_url']

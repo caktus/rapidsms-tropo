@@ -45,7 +45,7 @@ You can use any URL.
 
 Configure your Tropo application at tropo.com so its SMS/Messaging URL will invoke the Django URL that you just configured.  E.g.::
 
-    http://yourserver.example.com/tropo/
+    https://yourserver.example.com/tropo/
 
 Voice and more complicated stuff
 --------------------------------
@@ -67,6 +67,12 @@ Development by `Caktus Consulting Group <http://www.caktusgroup.com/>`_.
 
 Changelog
 --------------------------------
+
+v0.1.2 (Released 2013-05-17)
+________________________________
+
+- Add validation of some incoming requests from Tropo.
+
 
 v0.1.1 (Released 2012-07-02)
 ________________________________

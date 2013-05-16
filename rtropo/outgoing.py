@@ -3,7 +3,7 @@ from urllib2 import urlopen
 
 from rapidsms.backends.base import BackendBase
 
-base_url = 'http://api.tropo.com/1.0/sessions'
+base_url = 'https://api.tropo.com/1.0/sessions'
 
 class TropoBackend(BackendBase):
     """A RapidSMS threadless backend for Tropo"""

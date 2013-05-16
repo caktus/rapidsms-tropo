@@ -13,7 +13,7 @@ setup(
     exclude_package_data={
         '': ['*.sql', '*.pyc'],
     },
-    url='http://github.com/caktus/rapidsms-tropo/',
+    url='https://github.com/caktus/rapidsms-tropo/',
     license='LICENSE.txt',
     description='RapidSMS Tropo Threadless Backend',
     long_description=open('README.rst').read(),
