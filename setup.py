@@ -18,7 +18,12 @@ setup(
     description='RapidSMS Tropo Threadless Backend',
     long_description=open('README.rst').read(),
     install_requires=(
-        'rapidsms-threadless-router>=0.1.1',
-        'tropo-webapi-python>=0.1.1',
+        'rapidsms>=0.10.0',
+        'requests>=1.2.0',
+        'django>=1.4',
     ),
+    test_suite="runtests.runtests",
+    tests_require=(
+        'mock',
+    )
 )

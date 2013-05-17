@@ -1,63 +1,135 @@
-from urllib import urlencode
-from urllib2 import urlopen
+import json
+import logging
+
+from django.core.exceptions import ImproperlyConfigured
+from django.core import signing
 
 from rapidsms.backends.base import BackendBase
 
+import requests
+
+
+logger = logging.getLogger(__name__)
+
 base_url = 'https://api.tropo.com/1.0/sessions'
 
+
 class TropoBackend(BackendBase):
-    """A RapidSMS threadless backend for Tropo"""
+    """A RapidSMS backend for Tropo"""
 
     def configure(self, config=None, **kwargs):
-        self.config = config
-        
-    def start(self):
-        """Override BackendBase.start(), which never returns"""
-        self._running = True
+        """
+        We expect all of our config (apart from the ENGINE) to be
+        in a dictionary called 'config' in our INSTALLED_BACKENDS entry
+        """
+        self.config = config or {}
+        for key in ['messaging_token', 'number']:
+            if key not in self.config:
+                msg = "Tropo backend config must set '%s'; config is %r" %\
+                      (key, config)
+                raise ImproperlyConfigured(msg)
+        if kwargs:
+            msg = "All tropo backend config should be within the `config`"\
+                "entry of the backend dictionary"
+            raise ImproperlyConfigured(msg)
 
-    def send(self, message):
-        self.debug("send(%s,%s)" % (message.connection.identity,message.text))
-        token = self.config['messaging_token']
-        action = 'create'
-        # Tropo doesn't like dashes in phone numbers
-        callerID = self.config['number'].replace("-","")
-        numberToDial = message.connection.identity.replace("-","")
+    @property
+    def token(self):
+        return self.config['messaging_token']
 
-        params = urlencode([('action', action), ('token', token), ('numberToDial', numberToDial), ('msg', message.text), ('callerID', callerID)])
-        self.debug("%s?%s" % (base_url, params))
-        data = urlopen('%s?%s' % (base_url, params)).read()
-        self.debug(data)
-        return True
+    def execute_tropo_program(self, program):
+        """
+        Ask Tropo to execute a program for us.
 
-    def call_tropo(self,callback_url,message_type='text'):
-        """Other apps can call this and pass a function.  
-        We'll ask tropo to kick off our application and return.
-        Soon, Tropo will POST to us.  When we get the post, we'll pass it to the function
-        we were originally given to handle, which it should do by parsing the JSON it
-        was POSTed and responding with some more JSON.  (See the Tropo WebAPI docs.)
+        We can't do this directly;
+        we have to ask Tropo to call us back and then give Tropo the
+        program in the response body to that request from Tropo.
 
-        The callback_url is a URL.  When Tropo calls us back,
-        we'll pass the request to whatever view django would normally
-        use for that URL.  It can include parameters
-        (e.g. "/patient/callback/1").  An easy way to build this is
-        to use reverse:
+        But we can pass data to Tropo and ask Tropo to pass it back
+        to us when Tropo calls us back. So, we just bundle up the program
+        and pass it to Tropo, then when Tropo calls us back, we
+        give the program back to Tropo.
 
-          url = reverse('patient-callback', kwargs={ 'patient_id': patient_id })
+        We also cryptographically sign our program, so that
+        we can verify when we're called back with a program, that it's
+        one that we sent to Tropo and has not gotten mangled.
 
-        message_type is optional, or pass 'voice' to use the voice token instead of text.
+        See https://docs.djangoproject.com/en/1.4/topics/signing/ for more
+        about the signing API.
 
-        (We do this by adding some parms to the call we make to Tropo and looking for
-        them on the return post.)
+        See https://www.tropo.com/docs/webapi/passing_in_parameters_text.htm
+        for the format we're using to call Tropo, pass it data, and ask
+        them to call us back.
+
+
+
+        :param program: A Tropo program, i.e. a dictionary with a 'tropo'
+            key whose value is a list of dictionaries, each representing
+            a Tropo command.
+        """
+        # The signer will also "pickle" the data structure for us
+        signed_program = signing.dumps(program)
+
+        params = {
+            'action': 'create',  # Required by Tropo
+            'token': self.config['messaging_token'],  # Identify ourselves
+            'program': signed_program,  # Additional data
+        }
+        data = json.dumps(params)
+
+        # Tell Tropo we'd like our response in JSON format
+        # and our data is in that format too.
+        headers = {
+            'accept': 'application/json',
+            'content-type': 'application/json',
+        }
+        response = requests.post(base_url,
+                                 data=data,
+                                 headers=headers)
+
+        # If the HTTP request failed, raise an appropriate exception - e.g.
+        # if our network (or Tropo) are down:
+        response.raise_for_status()
+
+        result = json.loads(response.content)
+        if not result['success']:
+            raise Exception("Tropo error: %s" % result.get('error', 'unknown'))
+
+    def send(self, id_, text, identities, context=None):
+        """
+        Send messages when using RapidSMS 0.14.0 or later.
+
+        We can send multiple messages in one Tropo program, so we do
+        that.
+
+        :param id_: Unused, included for compatibility with RapidSMS.
+        :param string text: The message text to send.
+        :param identities: A list of identities to send the message to
+            (a list of strings)
+        :param context: Unused, included for compatibility with RapidSMS.
         """
 
-        if message_type == 'text':
-            token = self.config['messaging_token']
-        else:
-            token = self.config['voice_token']
-
-        # Call Tropo
-        parms = urlencode([('action','create'),
-                           ('callback_url',callback_url),
-                           ('token', token),
-                           ])
-        urlopen("%s?%s" % (base_url, parms)).read()
+        # Build our program
+        from_ = self.config['number'].replace('-', '')
+        commands = []
+        for identity in identities:
+            # We'll include a 'message' command for each recipient.
+            # The Tropo doc explicitly says that while passing a list
+            # of destination numbers is not a syntax error, only the
+            # first number on the list will get sent the message. So
+            # we have to send each one as a separate `message` command.
+            commands.append(
+                {
+                    'message': {
+                        'say': {'value': text},
+                        'to': identity,
+                        'from': from_,
+                        'channel': 'TEXT',
+                        'network': 'SMS'
+                    }
+                }
+            )
+            program = {
+                'tropo': commands,
+            }
+        self.execute_tropo_program(program)
