@@ -1,6 +1,5 @@
 import mock
 
-from ..utils import get_backend
 from .utils import TropoTest,  BACKEND_NAME
 
 
@@ -9,7 +8,7 @@ class TropoSendTest(TropoTest):
     def test_send(self):
         # send method passes a reasonable Tropo program to
         # execute_tropo_program
-        backend = get_backend(BACKEND_NAME)
+        backend = self.router.backends[BACKEND_NAME]
         config = self.get_config()
         FROM = config['number']
         text = u"MESSAGE\u0123\u0743"

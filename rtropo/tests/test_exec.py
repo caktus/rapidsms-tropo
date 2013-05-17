@@ -5,8 +5,6 @@ from django.core import signing
 
 import mock
 
-from ..utils import get_backend
-
 from .utils import TropoTest, BACKEND_NAME
 
 
@@ -23,7 +21,7 @@ class TestExecute(TropoTest):
         mock_response = mock.Mock(status_code=200, content=json.dumps(result))
         with mock.patch('requests.post') as post:
             post.return_value = mock_response
-            get_backend(BACKEND_NAME).execute_tropo_program(program)
+            self.router.backends[BACKEND_NAME].execute_tropo_program(program)
         post.assert_called()
         args, kwargs = post.call_args
         data = json.loads(kwargs['data'])

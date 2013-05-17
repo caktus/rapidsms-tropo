@@ -6,7 +6,6 @@ import mock
 from django.core import signing
 from django.core.urlresolvers import reverse
 
-from ..utils import get_backend
 from .utils import TropoTest, BACKEND_NAME
 
 
@@ -48,7 +47,7 @@ class TropoViewTest(TropoTest):
                     'id': 'FROM',
                 },
                 'initialText': text,
-                'token': get_backend(BACKEND_NAME).token,
+                'token': self.router.backends[BACKEND_NAME].token,
             }
         }
         conn = mock.Mock()
