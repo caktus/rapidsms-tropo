@@ -97,7 +97,7 @@ Development by `Caktus Consulting Group <http://www.caktusgroup.com/>`_.
 Changelog
 --------------------------------
 
-v0.2.0 (Released 2013-05-17)
+v0.2.0 (Released 2013-05-20)
 ________________________________
 
 * Updates for RapidSMS 0.14 and later.
