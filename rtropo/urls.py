@@ -1,8 +1,8 @@
-from django.conf.urls.defaults import *
+from django.conf.urls import patterns, url
 
-from rtropo import views
+from . import views
 
-urlpatterns = patterns('',
+urlpatterns = patterns('',  # nopep8
     url(r"^(?P<backend_name>[\w-]+)/$", views.message_received,
         name='tropo'),
 )
